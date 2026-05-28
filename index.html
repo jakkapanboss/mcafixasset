@@ -11,10 +11,12 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        .timeline-container { display: flex; width: 100%; }
-        .timeline-cars-side { width: 260px; flex-shrink: 0; }
-        .timeline-days-side { flex-grow: 1; overflow-x: auto; }
-        .days-grid-layout { display: grid; grid-auto-columns: 40px; grid-auto-flow: column; }
+        /* ปรับสไตล์ตัว Grid บังคับขนาดช่องละ 40px ตายตัว */
+        .days-grid-layout { 
+            display: grid; 
+            grid-auto-columns: 40px; 
+            grid-auto-flow: column; 
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen text-gray-800 flex flex-col">
@@ -162,7 +164,7 @@
                 <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
                     <div>
                         <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-days text-red-500"></i> ตารางคิวสถานะและการจองยืมรถประจำเดือน</h2>
-                        <p class="text-xs text-gray-400 mt-0.5">แกนซ้าย: รายชื่อรถในคลัง | แกนขวาบน: วันที่ในเดือนปัจจุบัน</p>
+                        <p class="text-xs text-gray-400 mt-0.5">ล็อกพิกัดเป๊ะ: รายชื่อรถล็อกอยู่ฝั่งซ้าย ส่วนวันที่และแถบสีจะเลื่อนขยับไปพร้อมกันเป็นแผงเดียว</p>
                     </div>
                     
                     <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto justify-between lg:justify-end">
@@ -184,16 +186,21 @@
                     </div>
                 </div>
 
-                <div class="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
-                    <div class="timeline-container bg-slate-200">
-                        <div class="timeline-cars-side bg-slate-100 font-bold text-xs p-3 text-slate-700 border-r border-gray-300 flex items-center justify-center">
-                            รายชื่อรถในคลังแผนก
+                <div class="border border-gray-200 rounded-xl overflow-x-auto shadow-xs">
+                    <div class="min-w-[1500px] text-sm">
+                        
+                        <div id="timelineMainHeader" class="flex bg-slate-100 border-b border-gray-300 font-bold">
+                            <div class="w-[260px] flex-shrink-0 bg-slate-200 border-r border-gray-300 text-slate-700 p-3 text-center sticky left-0 z-20">
+                                รายชื่อรถในคลังแผนก
+                            </div>
+                            <div id="timelineDaysHeader" class="days-grid-layout flex-grow bg-slate-100 text-slate-600 divide-x divide-gray-200 text-center">
+                                </div>
                         </div>
-                        <div class="timeline-days-side bg-slate-100 text-center font-bold text-xs" id="timelineHeaderScroll">
-                            <div id="timelineDaysHeader" class="days-grid-layout bg-slate-100 text-slate-600 divide-x divide-gray-200"></div>
-                        </div>
+
+                        <div id="timelineRowsContainer" class="divide-y divide-gray-200 bg-white">
+                            </div>
+
                     </div>
-                    <div id="timelineRowsContainer" class="divide-y divide-gray-200 bg-white"></div>
                 </div>
             </div>
             
@@ -426,7 +433,7 @@
             renderTimelineCalendar(); 
         }
 
-        // 🎯 จุดแก้ไขแบบถอนรากถอนโคน: บังคับให้เทียบวัน-เดือน-ปี ค.ศ. ให้เปลี่ยนไปตามจริงทุกลำดับลูปของเดือนที่สลับไป
+        // 🎯 จุดสลับโครงสร้างตาราง: ยกเลิกส่วนเลื่อนแยกชิ้น รวบให้เลื่อนพร้อมกันแบบล็อกพิกัดแน่นๆ ทั้งวันที่และแถบสี
         function renderTimelineCalendar() {
             const headerContainer = document.getElementById('timelineDaysHeader');
             const rowsContainer = document.getElementById('timelineRowsContainer');
@@ -438,24 +445,21 @@
             
             const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-            // 1. วาดแถบหัวข้อตัวเลขวันที่ (1 ถึง 28/30/31 วัน)
+            // 1. วาดแถบตัวเลขวันที่ด้านบน
             headerContainer.style.gridTemplateColumns = `repeat(${totalDays}, 40px)`;
             for (let d = 1; d <= totalDays; d++) { 
-                headerContainer.innerHTML += `<div class="py-3 text-slate-600 border-r border-gray-200 text-center font-bold">${d}</div>`; 
+                headerContainer.innerHTML += `<div class="py-3 text-slate-600 font-bold border-r border-gray-200">${d}</div>`; 
             }
 
             const calendarFilter = document.getElementById('calendarFilterType').value;
             let filtered = calendarFilter === "ALL" ? cars : cars.filter(c => c.type === calendarFilter);
             if(filtered.length === 0) { rowsContainer.innerHTML = `<div class="p-8 text-center text-gray-400">ไม่พบข้อมูลรถในกลุ่มประเภทนี้</div>`; return; }
 
-            // 2. วาดตารางคิวงาน (แก้ไขระบบเปรียบเทียบค่าให้เลื่อนขยับสอดรับตาม ค.ศ. เดือน-ปี จริง)
+            // 2. วาดแถวเนื้อหา (รายชื่อรถ + กล่องสี) รวบสัดส่วนให้ตรงล็อกพิกัดเสมอกันเป๊ะๆ
             filtered.forEach(car => {
                 let cellsHtml = '';
                 for (let d = 1; d <= totalDays; d++) {
-                    // แปลงฟอร์แมตวันที่ของกล่องแต่ละช่องให้เป็น "ค.ศ. ปี-เดือน-วัน" ผันแปรตาม Dynamic ที่เลื่อนไปจริงๆ
                     const currentISODate = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                    
-                    // ระบบจะค้นหาว่าใน 'วันเดือนปี' ของกล่องนี้ ตรงกับช่วงประวัติวันเริ่มต้น (start) และวันสิ้นสุด (end) ของข้อมูลจองไหม
                     const active = bookings.find(b => b.carId == car.id && currentISODate >= b.start && currentISODate <= b.end);
                     
                     let cellBg = "bg-white";
@@ -464,31 +468,32 @@
                     }
                     
                     cellsHtml += `
-                        <div class="h-14 border-r border-gray-200 ${cellBg} transition duration-150 relative group cursor-help">
-                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] p-2 rounded shadow-xl hidden group-hover:block z-50 whitespace-nowrap mb-1">
+                        <div class="h-14 border-r border-gray-200 ${cellBg} relative group cursor-help">
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] p-2 rounded shadow-xl hidden group-hover:block定位 z-50 whitespace-nowrap mb-1">
                                 ${active ? 'ผู้จอง: ' + active.borrower : 'ว่างเปิดจอง'}
                             </div>
                         </div>
                     `;
                 }
+                
+                let badgeClass = "bg-red-50 text-red-700 border-red-200";
+                if(car.type === "Honda BigBike") badgeClass = "bg-slate-900 text-slate-100 border-slate-950";
+                if(car.type === "CUB House") badgeClass = "bg-amber-50 text-amber-800 border-amber-200";
+
                 rowsContainer.innerHTML += `
-                    <div class="timeline-container items-center border-b border-gray-200">
-                        <div class="timeline-cars-side p-3 bg-white border-r border-gray-300 font-bold text-xs text-slate-800">
-                            <span class="truncate block" title="${car.name}">${car.name}</span>
-                            <span class="text-[10px] text-gray-400">${car.type}</span>
+                    <div class="flex items-center border-b border-gray-200">
+                        <div class="w-[260px] flex-shrink-0 p-3 bg-white border-r border-gray-300 font-bold text-xs text-slate-800 sticky left-0 z-10 shadow-sm flex flex-col gap-1">
+                            <span class="truncate" title="${car.name}">${car.name}</span>
+                            <div>
+                                <span class="px-2 py-0.5 text-[10px] rounded-full border ${badgeClass}">${car.type}</span>
+                            </div>
                         </div>
-                        <div class="timeline-days-side overflow-x-auto scrollbar-none" onscroll="syncScroll(this)">
-                            <div class="days-grid-layout" style="grid-template-columns: repeat(${totalDays}, 40px);">${cellsHtml}</div>
+                        <div class="days-grid-layout flex-grow divide-x divide-gray-200" style="grid-template-columns: repeat(${totalDays}, 40px);">
+                            ${cellsHtml}
                         </div>
                     </div>
                 `;
             });
-        }
-
-        function syncScroll(el) { 
-            const headerScroll = document.getElementById('timelineHeaderScroll');
-            if(headerScroll) headerScroll.scrollLeft = el.scrollLeft; 
-            document.querySelectorAll('.timeline-days-side').forEach(r => { if(r !== el) r.scrollLeft = el.scrollLeft; }); 
         }
 
         document.getElementById('addCarForm').addEventListener('submit', function(e) {
