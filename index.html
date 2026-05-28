@@ -10,6 +10,7 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
         .timeline-container { display: flex; width: 100%; }
         .timeline-cars-side { width: 260px; flex-shrink: 0; }
         .timeline-days-side { flex-grow: 1; overflow-x: auto; }
@@ -281,7 +282,7 @@
     </footer>
 
     <script>
-        // ⚠️ ขั้นตอนสำคัญ: นำลิงก์ Web App URL จากข้อ 8 ในสเต็ปที่ 2 มาวางแทนที่ตรงนี้ครับ!
+        // ⚠️ นำลิงก์ Web App URL จาก Google Sheets ของคุณมาใส่ตรงนี้เหมือนเดิมนะครับ
         const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby9zA0_kx4AtQk96dPq3kyjfGaY5WVLzoIG5u_PMLBi32aynpBJfZOwNNSKksHI9FNtqA/exec";
 
         let cars = [];
@@ -291,7 +292,6 @@
         let currentYear = currentDate.getFullYear();
         const monthNamesThai = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 
-        // ฟังก์ชันดึงข้อมูลจากออนไลน์ Google Sheets ล่าสุดมาแสดงผลร่วมกัน
         async function loadOnlineData() {
             const statusDiv = document.getElementById('syncStatus');
             if(statusDiv) statusDiv.classList.remove('hidden');
@@ -310,7 +310,6 @@
             }
         }
 
-        // ฟังก์ชันส่งข้อมูลกลับไปอัปเดตออนไลน์ร่วมกัน
         async function syncToOnline() {
             const statusDiv = document.getElementById('syncStatus');
             if(statusDiv) statusDiv.classList.remove('hidden');
@@ -358,10 +357,14 @@
             renderDashboardBookings();
             filterCarDropdown(); 
             renderFullCarList(); 
+            if(!document.getElementById('calendarPage').classList.contains('hidden')) {
+                renderTimelineCalendar();
+            }
         }
 
         function renderDashboardBookings() {
             const tbody = document.getElementById('dashboardBookingTable');
+            if (!tbody) return;
             if (bookings.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-400 font-medium">ยังไม่มีรายการจองรถในระบบ คิวว่างทั้งหมด 100%</td></tr>`;
                 return;
@@ -391,6 +394,7 @@
         function filterCarDropdown() {
             const selectedType = document.getElementById('filterBookingType').value;
             const carSelect = document.getElementById('selectCar');
+            if (!carSelect) return;
             let filtered = selectedType === "ALL" ? cars : cars.filter(c => c.type === selectedType);
             if(filtered.length === 0) { carSelect.innerHTML = `<option value="">-- ไม่พบรถในกลุ่มประเภทที่เลือก --</option>`; return; }
             carSelect.innerHTML = filtered.map(c => `<option value="${c.id}">[${c.type}] ${c.name}</option>`).join('');
@@ -398,6 +402,7 @@
 
         function renderFullCarList() {
             const tbody = document.getElementById('fullCarListTable');
+            if (!tbody) return;
             const tableFilter = document.getElementById('assetTableFilter').value;
             let filtered = tableFilter === "ALL" ? cars : cars.filter(c => c.type === tableFilter);
             document.getElementById('totalCarBadge').innerText = `ทั้งหมด: ${filtered.length} รายการ`;
@@ -414,35 +419,77 @@
             `).join('');
         }
 
-        function changeMonth(dir) { currentMonth += dir; if(currentMonth<0){currentMonth=11; currentYear--;} else if(currentMonth>11){currentMonth=0; currentYear++;} renderTimelineCalendar(); }
+        function changeMonth(dir) { 
+            currentMonth += dir; 
+            if(currentMonth < 0){ currentMonth = 11; currentYear--; } 
+            else if(currentMonth > 11){ currentMonth = 0; currentYear++; } 
+            renderTimelineCalendar(); 
+        }
 
+        // 🎯 จุดแก้ไขบั๊กหลัก: ปรับแต่งให้เนื้อหาแถบสีคำนวณใหม่แบบ Dynamic ตามเดือนที่กดสลับซ้ายขวาทันที
         function renderTimelineCalendar() {
-            document.getElementById('calendarMonthYear').innerText = `${monthNamesThai[currentMonth]} ${currentYear + 543}`;
             const headerContainer = document.getElementById('timelineDaysHeader');
             const rowsContainer = document.getElementById('timelineRowsContainer');
-            const calendarFilter = document.getElementById('calendarFilterType').value;
-            headerContainer.innerHTML = ''; rowsContainer.innerHTML = '';
+            if (!headerContainer || !rowsContainer) return;
+
+            document.getElementById('calendarMonthYear').innerText = `${monthNamesThai[currentMonth]} ${currentYear + 543}`;
+            headerContainer.innerHTML = ''; 
+            rowsContainer.innerHTML = '';
+            
             const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
 
+            // 1. วาดแถบตัวเลขวันที่ด้านบนขวาใหม่
             headerContainer.style.gridTemplateColumns = `repeat(${totalDays}, 40px)`;
-            for (let d = 1; d <= totalDays; d++) { headerContainer.innerHTML += `<div class="py-3 text-slate-600 border-r border-gray-200 text-center font-bold">${d}</div>`; }
+            for (let d = 1; d <= totalDays; d++) { 
+                headerContainer.innerHTML += `<div class="py-3 text-slate-600 border-r border-gray-200 text-center font-bold">${d}</div>`; 
+            }
 
+            const calendarFilter = document.getElementById('calendarFilterType').value;
             let filtered = calendarFilter === "ALL" ? cars : cars.filter(c => c.type === calendarFilter);
-            if(filtered.length === 0) { rowsContainer.innerHTML = `<div class="p-8 text-center text-gray-400">ไม่พบรถในประเภทกลุ่มนี้</div>`; return; }
+            if(filtered.length === 0) { rowsContainer.innerHTML = `<div class="p-8 text-center text-gray-400">ไม่พบข้อมูลรถในกลุ่มประเภทนี้</div>`; return; }
 
+            // 2. วาดตารางคิวงานรายวันของรถแต่ละคัน (Dynamic Date Checking)
             filtered.forEach(car => {
                 let cellsHtml = '';
                 for (let d = 1; d <= totalDays; d++) {
+                    // ล็อกฟอร์แมตวันที่ตรวจสอบ ค.ศ. ให้เปลี่ยนค่าผันตามตัวแปร currentYear และ currentMonth จริง
                     const currentISODate = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    
+                    // ตรวจสอบว่ามีข้อมูลคิวงานชนกับวันและเดือนนี้ไหม
                     const active = bookings.find(b => b.carId == car.id && currentISODate >= b.start && currentISODate <= b.end);
-                    let cellBg = active ? (car.type === "Honda BigBike" ? "bg-slate-800" : car.type === "CUB House" ? "bg-amber-600" : "bg-red-500") : "bg-white";
-                    cellsHtml += `<div class="h-14 border-r border-gray-200 ${cellBg} relative group cursor-help"><div class="absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] p-2 rounded shadow-xl hidden group-hover:block z-50 whitespace-nowrap mb-1">${active ? 'ผู้จอง: '+active.borrower : 'ว่างเปิดจอง'}</div></div>`;
+                    
+                    let cellBg = "bg-white";
+                    if (active) {
+                        cellBg = car.type === "Honda BigBike" ? "bg-slate-800" : car.type === "CUB House" ? "bg-amber-600" : "bg-red-500";
+                    }
+                    
+                    cellsHtml += `
+                        <div class="h-14 border-r border-gray-200 ${cellBg} relative group cursor-help">
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] p-2 rounded shadow-xl hidden group-hover:block z-50 whitespace-nowrap mb-1">
+                                ${active ? 'ผู้จอง: ' + active.borrower : 'ว่างเปิดจอง'}
+                            </div>
+                        </div>
+                    `;
                 }
-                rowsContainer.innerHTML += `<div class="timeline-container items-center border-b border-gray-200"><div class="timeline-cars-side p-3 bg-white border-r border-gray-300 font-bold text-xs text-slate-800"><span class="truncate block">${car.name}</span><span class="text-[10px] text-gray-400">${car.type}</span></div><div class="timeline-days-side overflow-x-auto scrollbar-none" onscroll="syncScroll(this)"><div class="days-grid-layout" style="grid-template-columns: repeat(${totalDays}, 40px);">${cellsHtml}</div></div></div>`;
+                rowsContainer.innerHTML += `
+                    <div class="timeline-container items-center border-b border-gray-200">
+                        <div class="timeline-cars-side p-3 bg-white border-r border-gray-300 font-bold text-xs text-slate-800">
+                            <span class="truncate block" title="${car.name}">${car.name}</span>
+                            <span class="text-[10px] text-gray-400">${car.type}</span>
+                        </div>
+                        <div class="timeline-days-side overflow-x-auto scrollbar-none" onscroll="syncScroll(this)">
+                            <div class="days-grid-layout" style="grid-template-columns: repeat(${totalDays}, 40px);">${cellsHtml}</div>
+                        </div>
+                    </div>
+                `;
             });
         }
 
-        function syncScroll(el) { document.getElementById('timelineHeaderScroll').scrollLeft = el.scrollLeft; document.querySelectorAll('.timeline-days-side').forEach(r => { if(r !== el) r.scrollLeft = el.scrollLeft; }); }
+        function syncScroll(el) { 
+            const headerScroll = document.getElementById('timelineHeaderScroll');
+            if(headerScroll) headerScroll.scrollLeft = el.scrollLeft; 
+            document.querySelectorAll('.timeline-days-side').forEach(r => { if(r !== el) r.scrollLeft = el.scrollLeft; }); 
+        }
 
         document.getElementById('addCarForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -469,7 +516,6 @@
 
         function cancelBooking(id) { if(confirm("ยกเลิกคิวจองรายการนี้ใช่หรือไม่?")) { bookings = bookings.filter(b => b.id !== id); syncToOnline(); } }
 
-        // เรียกดาวน์โหลดข้อมูลร่วมกันทันทีที่เปิดหน้าเว็บขึ้นมา
         loadOnlineData();
     </script>
 </body>
