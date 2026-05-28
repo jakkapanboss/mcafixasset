@@ -426,7 +426,7 @@
             renderTimelineCalendar(); 
         }
 
-        // 🎯 จุดแก้ไขบั๊กหลัก: ปรับแต่งให้เนื้อหาแถบสีคำนวณใหม่แบบ Dynamic ตามเดือนที่กดสลับซ้ายขวาทันที
+        // 🎯 จุดแก้ไขแบบถอนรากถอนโคน: บังคับให้เทียบวัน-เดือน-ปี ค.ศ. ให้เปลี่ยนไปตามจริงทุกลำดับลูปของเดือนที่สลับไป
         function renderTimelineCalendar() {
             const headerContainer = document.getElementById('timelineDaysHeader');
             const rowsContainer = document.getElementById('timelineRowsContainer');
@@ -438,7 +438,7 @@
             
             const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-            // 1. วาดแถบตัวเลขวันที่ด้านบนขวาใหม่
+            // 1. วาดแถบหัวข้อตัวเลขวันที่ (1 ถึง 28/30/31 วัน)
             headerContainer.style.gridTemplateColumns = `repeat(${totalDays}, 40px)`;
             for (let d = 1; d <= totalDays; d++) { 
                 headerContainer.innerHTML += `<div class="py-3 text-slate-600 border-r border-gray-200 text-center font-bold">${d}</div>`; 
@@ -448,14 +448,14 @@
             let filtered = calendarFilter === "ALL" ? cars : cars.filter(c => c.type === calendarFilter);
             if(filtered.length === 0) { rowsContainer.innerHTML = `<div class="p-8 text-center text-gray-400">ไม่พบข้อมูลรถในกลุ่มประเภทนี้</div>`; return; }
 
-            // 2. วาดตารางคิวงานรายวันของรถแต่ละคัน (Dynamic Date Checking)
+            // 2. วาดตารางคิวงาน (แก้ไขระบบเปรียบเทียบค่าให้เลื่อนขยับสอดรับตาม ค.ศ. เดือน-ปี จริง)
             filtered.forEach(car => {
                 let cellsHtml = '';
                 for (let d = 1; d <= totalDays; d++) {
-                    // ล็อกฟอร์แมตวันที่ตรวจสอบ ค.ศ. ให้เปลี่ยนค่าผันตามตัวแปร currentYear และ currentMonth จริง
+                    // แปลงฟอร์แมตวันที่ของกล่องแต่ละช่องให้เป็น "ค.ศ. ปี-เดือน-วัน" ผันแปรตาม Dynamic ที่เลื่อนไปจริงๆ
                     const currentISODate = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                     
-                    // ตรวจสอบว่ามีข้อมูลคิวงานชนกับวันและเดือนนี้ไหม
+                    // ระบบจะค้นหาว่าใน 'วันเดือนปี' ของกล่องนี้ ตรงกับช่วงประวัติวันเริ่มต้น (start) และวันสิ้นสุด (end) ของข้อมูลจองไหม
                     const active = bookings.find(b => b.carId == car.id && currentISODate >= b.start && currentISODate <= b.end);
                     
                     let cellBg = "bg-white";
@@ -464,7 +464,7 @@
                     }
                     
                     cellsHtml += `
-                        <div class="h-14 border-r border-gray-200 ${cellBg} relative group cursor-help">
+                        <div class="h-14 border-r border-gray-200 ${cellBg} transition duration-150 relative group cursor-help">
                             <div class="absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] p-2 rounded shadow-xl hidden group-hover:block z-50 whitespace-nowrap mb-1">
                                 ${active ? 'ผู้จอง: ' + active.borrower : 'ว่างเปิดจอง'}
                             </div>
