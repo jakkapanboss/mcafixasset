@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCA Fix Asset - ระบบบริหารจัดการและจองคิวรถแผนก</title>
+    <!-- นำเข้า Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- นำเข้า Font Awesome สำหรับไอคอน -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* สไตล์ชุดตารางแบบ Static กำหนดความกว้างคอลัมน์ให้เท่ากันตายตัวป้องกันปัญหาตารางเยื้อง */
+        .timeline-container {
+            display: flex;
+            width: 100%;
+        }
+        .timeline-cars-side {
+            width: 260px;
+            flex-shrink: 0;
+        }
+        .timeline-days-side {
+            flex-grow: 1;
+            overflow-x: auto;
+        }
+        .days-grid-layout {
+            display: grid;
+            grid-auto-columns: 40px;
+            grid-auto-flow: column;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800 flex flex-col">
+
+    <!-- แถบเมนูด้านบน (Navigation Bar) -->
+    <header class="bg-slate-900 text-white shadow-xl sticky top-0 z-50 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="switchPage('dashboardPage')">
+                <div class="bg-red-600 p-2.5 rounded-xl text-white shadow-md shadow-red-900/30">
+                    <i class="fa-solid fa-motorcycle text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-wider text-white">MCA Fix Asset</h1>
+                    <p class="text-xs text-slate-400 font-medium">ระบบบริหารและจองยานพาหนะภายในองค์กร</p>
+                </div>
+            </div>
+            
+            <nav class="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700/60 overflow-x-auto max-w-full no-scrollbar">
+                <button id="navDashboardBtn" onclick="switchPage('dashboardPage')" class="px-4 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer flex items-center gap-2 bg-red-600 text-white shadow-md">
+                    <i class="fa-solid fa-chart-pie"></i> แดชบอร์ด
+                </button>
+                <button id="navBookingBtn" onclick="switchPage('bookingPage')" class="px-4 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-calendar-plus"></i> จองยืมรถ
+                </button>
+                <button id="navCalendarBtn" onclick="switchPage('calendarPage')" class="px-4 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-calendar-days"></i> ปฏิทินคิวรถว่าง
+                </button>
+                <button id="navCarListBtn" onclick="switchPage('carListPage')" class="px-4 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-layer-group"></i> รายชื่อรถทั้งหมด
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- เนื้อหาหลักเว็บไซต์ -->
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
+        
+        <!-- ==================== หน้าที่ 1: แดชบอร์ด (Dashboard) ==================== -->
+        <div id="dashboardPage" class="space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">รถในคลังรวม</p>
+                        <h3 id="statTotalCars" class="text-3xl font-black text-slate-800 mt-1">0 คัน</h3>
+                    </div>
+                    <div class="bg-slate-100 p-3 rounded-xl text-slate-600"><i class="fa-solid fa-warehouse text-xl"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Wing Center</p>
+                        <h3 id="statWing" class="text-3xl font-black text-red-600 mt-1">0 คัน</h3>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded-xl text-red-600"><i class="fa-solid fa-circle text-xl"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Honda BigBike</p>
+                        <h3 id="statBigBike" class="text-3xl font-black text-slate-900 mt-1">0 คัน</h3>
+                    </div>
+                    <div class="bg-slate-100 p-3 rounded-xl text-slate-900"><i class="fa-solid fa-gauge-high text-xl"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">CUB House</p>
+                        <h3 id="statCub" class="text-3xl font-black text-amber-700 mt-1">0 คัน</h3>
+                    </div>
+                    <div class="bg-amber-50 p-3 rounded-xl text-amber-700"><i class="fa-solid fa-mug-saucer text-xl"></i></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-red-500"></i> คิวการจองยืมรถล่าสุด</h2>
+                    </div>
+                    <button onclick="switchPage('bookingPage')" class="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-xl transition cursor-pointer">+ เพิ่มการจองใหม่</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider border-b border-gray-100">
+                                <th class="p-4">ข้อมูลรถ</th>
+                                <th class="p-4">ประเภท</th>
+                                <th class="p-4">ผู้จอง / แผนกวัตถุประสงค์</th>
+                                <th class="p-4">ช่วงวันที่ยืม</th>
+                                <th class="p-4 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboardBookingTable" class="text-sm divide-y divide-gray-100 text-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== หน้าที่ 2: ฟอร์มจองยืมรถ ==================== -->
+        <div id="bookingPage" class="hidden max-w-2xl mx-auto">
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-md border border-gray-200">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-black text-slate-800 flex items-center justify-center gap-2"><i class="fa-solid fa-file-signature text-red-600"></i> กรอกแบบฟอร์มการจองรถ</h2>
+                    <p class="text-xs text-gray-400 mt-1">ระบุรูปแบบกลุ่มรถเพื่อค้นหารถในคลังที่ต้องการ</p>
+                </div>
+                
+                <form id="bookingForm" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 tracking-wider">1. ฟิลเตอร์รูปแบบรถ</label>
+                            <select id="filterBookingType" onchange="filterCarDropdown()" class="w-full mt-1.5 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-medium bg-white">
+                                <option value="ALL">ดูรถทุกประเภท</option>
+                                <option value="Wing Center">Wing Center</option>
+                                <option value="Honda BigBike">Honda BigBike</option>
+                                <option value="CUB House">CUB House</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 tracking-wider">2. เลือกรถที่ต้องการยืม</label>
+                            <select id="selectCar" required class="w-full mt-1.5 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-medium bg-white">
+                                <!-- รายชื่อรถเปลี่ยนตามฟิลเตอร์ด้านบน -->
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 tracking-wider">ชื่อผู้จองยืม / วัตถุประสงค์</label>
+                        <input type="text" id="borrowerName" required class="w-full mt-1.5 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none" placeholder="เช่น นายสมชาย (ยืมออกตรวจงานสาขา)">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 tracking-wider"><i class="fa-solid fa-calendar-play text-green-600 mr-1"></i> เริ่มต้นยืมวันที่</label>
+                            <input type="date" id="startDate" required class="w-full mt-1.5 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 tracking-wider"><i class="fa-solid fa-calendar-check text-red-600 mr-1"></i> คืนรถวันที่</label>
+                            <input type="date" id="endDate" required class="w-full mt-1.5 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none">
+                        </div>
+                    </div>
+                    
+                    <div class="pt-2">
+                        <button type="submit" class="w-full bg-red-600 text-white py-3.5 rounded-xl font-bold hover:bg-red-700 transition cursor-pointer shadow-lg shadow-red-200">
+                            <i class="fa-solid fa-circle-check mr-1"></i> บันทึกข้อมูลการจองรถ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ==================== หน้าที่ 3: หน้าปฏิทิน ==================== -->
+        <div id="calendarPage" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-calendar-days text-red-500"></i> ตารางคิวสถานะและการจองยืมรถประจำเดือน</h2>
+                        <p class="text-xs text-gray-400 mt-0.5">แกนซ้าย: รายชื่อรถในคลัง | แกนขวาบน: วันที่ในเดือนปัจจุบัน</p>
+                    </div>
+                    
+                    <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto justify-between lg:justify-end">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-gray-500 uppercase"><i class="fa-solid fa-filter"></i> ตัวกรองปฏิทิน:</span>
+                            <select id="calendarFilterType" onchange="renderTimelineCalendar()" class="p-2 border border-gray-300 rounded-xl text-xs font-bold bg-gray-50 outline-none focus:ring-2 focus:ring-red-500">
+                                <option value="ALL">แสดงคิวรถทุกประเภท</option>
+                                <option value="Wing Center">🔴 เฉพาะ Wing Center</option>
+                                <option value="Honda BigBike">⚫ เฉพาะ Honda BigBike</option>
+                                <option value="CUB House">🟤 เฉพาะ CUB House</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <button onclick="changeMonth(-1)" class="p-2 border border-gray-200 hover:bg-gray-100 rounded-xl transition cursor-pointer"><i class="fa-solid fa-chevron-left"></i></button>
+                            <h3 id="calendarMonthYear" class="text-lg font-black text-slate-800 min-w-[140px] text-center"></h3>
+                            <button onclick="changeMonth(1)" class="p-2 border border-gray-200 hover:bg-gray-100 rounded-xl transition cursor-pointer"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+                    <div class="timeline-container bg-slate-200">
+                        <div class="timeline-cars-side bg-slate-100 font-bold text-xs p-3 text-slate-700 border-r border-gray-300 flex items-center justify-center">
+                            รายชื่อรถในคลังแผนก
+                        </div>
+                        <div class="timeline-days-side bg-slate-100 text-center font-bold text-xs" id="timelineHeaderScroll">
+                            <div id="timelineDaysHeader" class="days-grid-layout bg-slate-100 text-slate-600 divide-x divide-gray-200"></div>
+                        </div>
+                    </div>
+
+                    <div id="timelineRowsContainer" class="divide-y divide-gray-200 bg-white"></div>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-4 text-xs font-semibold px-2">
+                <span class="flex items-center gap-1.5 text-gray-500"><span class="w-3 h-3 bg-red-500 rounded-sm inline-block"></span> แถบสีแดง: Wing Center</span>
+                <span class="flex items-center gap-1.5 text-gray-500"><span class="w-3 h-3 bg-slate-800 rounded-sm inline-block"></span> แถบสีดำ: Honda BigBike</span>
+                <span class="flex items-center gap-1.5 text-gray-500"><span class="w-3 h-3 bg-amber-600 rounded-sm inline-block"></span> แถบสีน้ำตาล: CUB House</span>
+            </div>
+        </div>
+
+        <!-- ==================== หน้าที่ 4: รายชื่อรถทั้งหมดในระบบ ==================== -->
+        <div id="carListPage" class="hidden space-y-6">
+            
+            <!-- ส่วนป้อนเพิ่มรถคันใหม่เข้าระบบ -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-square-plus text-green-600"></i> เพิ่มข้อมูลรถเข้าคลัง MCA Fix Asset</h2>
+                <form id="addCarForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 tracking-wider">ประเภทกลุ่มผลิตภัณฑ์</label>
+                        <select id="carType" class="w-full mt-1.5 p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none bg-white font-medium text-sm">
+                            <option value="Wing Center">🔴 Wing Center</option>
+                            <option value="Honda BigBike">⚫ Honda BigBike</option>
+                            <option value="CUB House">🟤 CUB House</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 tracking-wider">ชื่อรุ่น / เลขทะเบียนรถ</label>
+                        <input type="text" id="carName" required class="w-full mt-1.5 p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none text-sm" placeholder="เช่น Giorno+ (กข 123)">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 tracking-wider">เลขตัวถัง (Frame No.)</label>
+                        <input type="text" id="frameNo" required class="w-full mt-1.5 p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none text-sm" placeholder="เช่น MLHxxxx...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 tracking-wider">เลขเครื่องยนต์ (Engine No.)</label>
+                        <input type="text" id="engineNo" required class="w-full mt-1.5 p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none text-sm" placeholder="เช่น JF79E-xxxx...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 tracking-wider">สีตัวรถ (Color)</label>
+                        <input type="text" id="carColor" required class="w-full mt-1.5 p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none text-sm" placeholder="เช่น แดง-ดำ">
+                    </div>
+                    <div class="lg:col-span-5 flex justify-end pt-2">
+                        <button type="submit" class="bg-green-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-green-700 transition cursor-pointer flex items-center gap-1.5 shadow-md">
+                            <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูลรถ
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ส่วนตารางรวมรายชื่อรถทั้งหมดที่มี -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-list-check text-slate-700"></i> บัญชีทรัพย์สินรถทั้งหมดในระบบ</h2>
+                        <p class="text-xs text-gray-400 mt-0.5">สามารถกดสลับฟิลเตอร์เพื่อเรียกดูตามประเภทศูนย์ได้</p>
+                    </div>
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-gray-500 uppercase">ฟิลเตอร์กลุ่ม:</span>
+                            <select id="assetTableFilter" onchange="renderFullCarList()" class="p-2 border border-gray-300 rounded-xl text-xs font-bold bg-gray-50 outline-none focus:ring-2 focus:ring-red-500">
+                                <option value="ALL">แสดงรถทั้งหมด</option>
+                                <option value="Wing Center">เฉพาะ Wing Center</option>
+                                <option value="Honda BigBike">เฉพาะ Honda BigBike</option>
+                                <option value="CUB House">เฉพาะ CUB House</option>
+                            </select>
+                        </div>
+                        <div id="totalCarBadge" class="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl whitespace-nowrap">
+                            ทั้งหมด: 0 รายการ
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider border-b border-gray-100">
+                                <th class="p-4">กลุ่มรถ</th>
+                                <th class="p-4">ชื่อรุ่น / ทะเบียน</th>
+                                <th class="p-4">เลขตัวถัง (Frame No.)</th>
+                                <th class="p-4">เลขเครื่องยนต์ (Engine No.)</th>
+                                <th class="p-4">สีรถ (Color)</th>
+                                <th class="p-4 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullCarListTable" class="text-sm divide-y divide-gray-100 text-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 text-center py-4 text-xs text-gray-400 font-medium">
+        © 2026 MCA Fix Asset. All Rights Reserved. ระบบบันทึกข้อมูลแบบ Local Browser Storage
+    </footer>
+
+    <!-- ระบบการทำงาน (JavaScript Core Logic) -->
+    <script>
+        let cars = JSON.parse(localStorage.getItem('mca_asset_cars')) || [
+            { id: 1, name: "Honda Wave 110i (กข 456 กรุงเทพ)", type: "Wing Center", frame: "MLHJA140xG123456", engine: "JA14E-0123456", color: "แดง-ดำ" },
+            { id: 2, name: "Honda ADV350 (ชช 999 นนทบุรี)", type: "Wing Center", frame: "MLHKF430xN234567", engine: "KF43E-2345678", color: "เทา-ดำ" },
+            { id: 3, name: "Honda CBR1000RR-R (สส 111 เชียงใหม่)", type: "Honda BigBike", frame: "MLHSC820xL345678", engine: "SC82E-3456789", color: "สีกราฟิก HRC" },
+            { id: 4, name: "Honda Rebel 500 (นน 555 ชลบุรี)", type: "Honda BigBike", frame: "MLHPC560xK456789", engine: "PC56E-4567890", color: "ดำด้าน" },
+            { id: 5, name: "Honda Monkey 125 (มม 777 บุรีรัมย์)", type: "CUB House", frame: "MLHJB030xM567890", engine: "JB03E-5678901", color: "เหลือง-ขาว" },
+            { id: 6, name: "Honda CT125 (วว 888 ภูเก็ต)", type: "CUB House", frame: "MLHJA550xP678901", engine: "JA55E-6789012", color: "เขียวพราง" }
+        ];
+
+        let bookings = JSON.parse(localStorage.getItem('mca_asset_bookings')) || [];
+
+        let currentDate = new Date();
+        let currentMonth = currentDate.getMonth();
+        let currentYear = currentDate.getFullYear();
+
+        const monthNamesThai = [
+            "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+            "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+        ];
+
+        function syncData() {
+            localStorage.setItem('mca_asset_cars', JSON.stringify(cars));
+            localStorage.setItem('mca_asset_bookings', JSON.stringify(bookings));
+            updateStats();
+            renderAllPages();
+        }
+
+        function switchPage(pageId) {
+            document.getElementById('dashboardPage').classList.add('hidden');
+            document.getElementById('bookingPage').classList.add('hidden');
+            document.getElementById('calendarPage').classList.add('hidden');
+            document.getElementById('carListPage').classList.add('hidden');
+
+            document.getElementById(pageId).classList.remove('hidden');
+
+            const navs = ['navDashboardBtn', 'navBookingBtn', 'navCalendarBtn', 'navCarListBtn'];
+            navs.forEach(id => {
+                document.getElementById(id).className = "px-4 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/50";
+            });
+
+            let activeBtnId = 'navDashboardBtn';
+            if(pageId === 'bookingPage') activeBtnId = 'navBookingBtn';
+            if(pageId === 'calendarPage') activeBtnId = 'navCalendarBtn';
+            if(pageId === 'carListPage') activeBtnId = 'navCarListBtn';
+
+            document.getElementById(activeBtnId).className = "px-4 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer flex items-center gap-2 bg-red-600 text-white shadow-md";
+
+            if(pageId === 'calendarPage') {
+                renderTimelineCalendar();
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('statTotalCars').innerText = `${cars.length} คัน`;
+            document.getElementById('statWing').innerText = `${cars.filter(c => c.type === 'Wing Center').length} คัน`;
+            document.getElementById('statBigBike').innerText = `${cars.filter(c => c.type === 'Honda BigBike').length} คัน`;
+            document.getElementById('statCub').innerText = `${cars.filter(c => c.type === 'CUB House').length} คัน`;
+        }
+
+        function renderAllPages() {
+            renderDashboardBookings();
+            filterCarDropdown(); 
+            renderFullCarList(); 
+        }
+
+        function renderDashboardBookings() {
+            const tbody = document.getElementById('dashboardBookingTable');
+            if (bookings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-400 font-medium">ยังไม่มีรายการจองรถในระบบ คิวว่างทั้งหมด 100%</td></tr>`;
+                return;
+            }
+
+            bookings.sort((a,b) => new Date(a.start) - new Date(b.start));
+
+            tbody.innerHTML = bookings.map(b => {
+                const car = cars.find(c => c.id === b.carId);
+                const carName = car ? car.name : "🚨 ยานพาหนะถูกลบออกจากระบบแล้ว";
+                const carType = car ? car.type : "-";
+
+                let badgeColor = "bg-red-50 text-red-700 border-red-200"; 
+                if(carType === "Honda BigBike") badgeColor = "bg-slate-900 text-slate-100 border-slate-950";
+                if(carType === "CUB House") badgeColor = "bg-amber-50 text-amber-800 border-amber-200";
+
+                const displayDate = b.start === b.end ? b.start : `${b.start} ถึง ${b.end}`;
+
+                return `
+                    <tr class="hover:bg-gray-50/70 transition">
+                        <td class="p-4 font-bold text-slate-800">${carName}</td>
+                        <td class="p-4"><span class="px-2.5 py-1 text-xs font-bold rounded-full border ${badgeColor}">${carType}</span></td>
+                        <td class="p-4 font-medium text-gray-600">${b.borrower}</td>
+                        <td class="p-4 font-semibold text-blue-600"><i class="fa-regular fa-calendar-check mr-1"></i> ${displayDate}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="cancelBooking(${b.id})" class="text-xs bg-gray-50 text-gray-400 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-100 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer">
+                                <i class="fa-solid fa-trash-can"></i> ยกเลิก
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterCarDropdown() {
+            const selectedType = document.getElementById('filterBookingType').value;
+            const carSelect = document.getElementById('selectCar');
+            
+            let filteredCars = cars;
+            if (selectedType !== "ALL") {
+                filteredCars = cars.filter(car => car.type === selectedType);
+            }
+
+            if(filteredCars.length === 0) {
+                carSelect.innerHTML = `<option value="">-- ไม่พบรถในกลุ่มประเภทที่เลือก --</option>`;
+                return;
+            }
+
+            carSelect.innerHTML = filteredCars.map(car => `
+                <option value="${car.id}">[${car.type}] ${car.name} (${car.color})</option>
+            `).join('');
+        }
+
+        function renderFullCarList() {
+            const tbody = document.getElementById('fullCarListTable');
+            const tableFilter = document.getElementById('assetTableFilter').value;
+            
+            let filteredCars = cars;
+            if (tableFilter !== "ALL") {
+                filteredCars = cars.filter(car => car.type === tableFilter);
+            }
+
+            document.getElementById('totalCarBadge').innerText = `ทั้งหมด: ${filteredCars.length} รายการ`;
+
+            if(filteredCars.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400 font-medium">ไม่พบข้อมูลรถในระบบตามกลุ่มประเภทฟิลเตอร์นี้</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filteredCars.map(car => {
+                let typeBadge = "bg-red-50 text-red-700 border-red-100";
+                if(car.type === "Honda BigBike") typeBadge = "bg-slate-900 text-white border-slate-950";
+                if(car.type === "CUB House") typeBadge = "bg-amber-50 text-amber-800 border-amber-100";
+
+                return `
+                    <tr class="hover:bg-gray-50/60 transition">
+                        <td class="p-4">
+                            <span class="px-2.5 py-0.5 text-xs font-bold rounded-full border ${typeBadge}">${car.type}</span>
+                        </td>
+                        <td class="p-4 font-bold text-slate-800">${car.name}</td>
+                        <td class="p-4 font-mono text-xs font-semibold text-gray-600">${car.frame}</td>
+                        <td class="p-4 font-mono text-xs font-semibold text-gray-600">${car.engine}</td>
+                        <td class="p-4 font-medium text-gray-700">${car.color}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="removeCar(${car.id})" class="text-xs text-red-500 hover:text-red-700 font-bold transition cursor-pointer">
+                                <i class="fa-solid fa-minus-circle"></i> ลบรถออก
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function changeMonth(direction) {
+            currentMonth += direction;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; } 
+            else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            renderTimelineCalendar();
+        }
+
+        function renderTimelineCalendar() {
+            document.getElementById('calendarMonthYear').innerText = `${monthNamesThai[currentMonth]} ${currentYear + 543}`;
+            
+            const headerContainer = document.getElementById('timelineDaysHeader');
+            const rowsContainer = document.getElementById('timelineRowsContainer');
+            const calendarFilter = document.getElementById('calendarFilterType').value;
+            
+            headerContainer.innerHTML = '';
+            rowsContainer.innerHTML = '';
+
+            const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            // 1. วาดแถบหัวข้อวันที่ด้านบนขวา ล็อคขนาด Static ช่องละ 40px
+            headerContainer.style.gridTemplateColumns = `repeat(${totalDays}, 40px)`;
+            for (let day = 1; day <= totalDays; day++) {
+                headerContainer.innerHTML += `
+                    <div class="py-3 text-slate-600 border-r border-gray-200 text-center font-bold">
+                        ${day}
+                    </div>
+                `;
+            }
+
+            // ทำการกรองข้อมูลรายชื่อรถตามตัวเลือกฟิลเตอร์ประจำหน้าปฏิทิน
+            let filteredCars = cars;
+            if (calendarFilter !== "ALL") {
+                filteredCars = cars.filter(car => car.type === calendarFilter);
+            }
+
+            if (filteredCars.length === 0) {
+                rowsContainer.innerHTML = `<div class="p-8 text-center text-gray-400 font-medium">❌ ไม่พบประวัติข้อมูลรถในคลังแผนกตามรูปแบบกลุ่มผลิตภัณฑ์ที่เลือก</div>`;
+                return;
+            }
+
+            // 2. ลูปสร้างข้อมูลรายแถวแยกตามรถแต่ละคัน (แก้บั๊กคำเกินที่แถบ Tooltip แล้ว)
+            filteredCars.forEach(car => {
+                let rowDaysCellsHtml = '';
+
+                for (let day = 1; day <= totalDays; day++) {
+                    const checkMonthStr = String(currentMonth + 1).padStart(2, '0');
+                    const checkDayStr = String(day).padStart(2, '0');
+                    const currentISODate = `${currentYear}-${checkMonthStr}-${checkDayStr}`;
+
+                    const activeBooking = bookings.find(b => b.carId === car.id && currentISODate >= b.start && currentISODate <= b.end);
+
+                    let cellBg = "bg-white";
+                    let tooltipText = "ว่าง (คิวว่างเปิดจอง)";
+
+                    if (activeBooking) {
+                        cellBg = "bg-red-500"; 
+                        if (car.type === "Honda BigBike") cellBg = "bg-slate-800";
+                        if (car.type === "CUB House") cellBg = "bg-amber-600";
+                        tooltipText = `ถูกจองยืมโดย: ${activeBooking.borrower} (ช่วงวันที่: ${activeBooking.start} ถึง ${activeBooking.end})`;
+                    }
+
+                    rowDaysCellsHtml += `
+                        <div class="h-14 border-r border-gray-200 ${cellBg} transition duration-150 relative group cursor-help">
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] p-2 rounded shadow-xl hidden group-hover:block z-50 whitespace-nowrap mb-1">
+                                ${tooltipText}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                let badgeClass = "bg-red-50 text-red-700 border-red-200";
+                if(car.type === "Honda BigBike") badgeClass = "bg-slate-900 text-slate-100 border-slate-950";
+                if(car.type === "CUB House") badgeClass = "bg-amber-50 text-amber-800 border-amber-200";
+
+                rowsContainer.innerHTML += `
+                    <div class="timeline-container items-center border-b border-gray-200">
+                        <div class="timeline-cars-side p-3 bg-white border-r border-gray-300 font-bold text-xs text-slate-800 flex flex-col gap-1 shadow-sm">
+                            <span class="truncate" title="${car.name}">${car.name}</span>
+                            <div>
+                                <span class="px-2 py-0.5 text-[10px] rounded-full border ${badgeClass}">${car.type}</span>
+                            </div>
+                        </div>
+                        <div class="timeline-days-side overflow-x-auto scrollbar-none" onscroll="syncScroll(this)">
+                            <div class="days-grid-layout divide-gray-200" style="grid-template-columns: repeat(${totalDays}, 40px);">
+                                ${rowDaysCellsHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function syncScroll(el) {
+            const headerScroll = document.getElementById('timelineHeaderScroll');
+            headerScroll.scrollLeft = el.scrollLeft;
+            
+            const allRowsScrolls = document.querySelectorAll('.timeline-days-side');
+            allRowsScrolls.forEach(row => {
+                if(row !== el) row.scrollLeft = el.scrollLeft;
+            });
+        }
+
+        document.getElementById('addCarForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const type = document.getElementById('carType').value;
+            const name = document.getElementById('carName').value.trim();
+            const frame = document.getElementById('frameNo').value.trim();
+            const engine = document.getElementById('engineNo').value.trim();
+            const color = document.getElementById('carColor').value.trim();
+
+            cars.push({ id: Date.now(), type, name, frame, engine, color });
+
+            document.getElementById('carName').value = '';
+            document.getElementById('frameNo').value = '';
+            document.getElementById('engineNo').value = '';
+            document.getElementById('carColor').value = '';
+
+            alert(`✅ บันทึกข้อมูลรถ ${name} เข้าสู่คลังสำเร็จ!`);
+            syncData();
+        });
+
+        function removeCar(id) {
+            if (confirm("⚠️ ต้องการลบรถคันนี้ออกจากบัญชีทรัพย์สินใช่หรือไม่?")) {
+                cars = cars.filter(c => c.id !== id);
+                syncData();
+            }
+        }
+
+        document.getElementById('bookingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const carId = parseInt(document.getElementById('selectCar').value);
+            const borrower = document.getElementById('borrowerName').value.trim();
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+
+            if(!carId) {
+                alert("❌ กรุณาเลือกรถที่ต้องการจองด้วยครับ (หากไม่มีรถ ให้เพิ่มรถในระบบก่อน)");
+                return;
+            }
+
+            if(start > end) {
+                alert("❌ วันที่คืนรถต้องเท่ากับ หรืออยู่หลังวันที่เริ่มต้นยืมรถเสมอนะครับ");
+                return;
+            }
+
+            const isOverlap = bookings.some(b => b.carId === carId && (start <= b.end && end >= b.start));
+
+            if(isOverlap) {
+                alert("❌ รถคันนี้ในช่วงเวลาดังกล่าวมีพนักงานท่านอื่นลงทะเบียนยืมใช้งานไว้แล้ว รบกวนตรวจดูวันว่างอีกครั้งที่หน้าปฏิทินครับ");
+                return;
+            }
+
+            bookings.push({ id: Date.now(), carId, borrower, start, end });
+
+            document.getElementById('borrowerName').value = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+
+            alert("🎯 ลงทะเบียนคิวจองรถสำเร็จ!");
+            syncData();
+            switchPage('dashboardPage');
+        });
+
+        function cancelBooking(id) {
+            if(confirm("ยืนยันที่จะขอยกเลิกสิทธิ์คิวการจองยืมรายการนี้ใช่หรือไม่?")) {
+                bookings = bookings.filter(b => b.id !== id);
+                syncData();
+            }
+        }
+
+        syncData();
+    </script>
+</body>
+</html>
